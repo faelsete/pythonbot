@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# Virtualenvs
+.venv/
+env/
+venv/
+
+# Environment files e Segredos 
+# NOTE: Em vez de local repo secrets, pythonbot usa ~/.pythonbot/config/.env
+.env
+.env.*
+!.env.example
+
+# Node/npm (caso usado para MCP local)
+node_modules/
+
+# Logs e Temp db
+*.log
+*.sqlite3
+*.db

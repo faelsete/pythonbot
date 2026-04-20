@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pythonbot - Organismo Vivo</title>
+    <!-- Modern Typography: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- SIDEBAR -->
+        <nav class="glass-sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-microchip heartbeat"></i>
+                <h1>Pythonbot</h1>
+                <span class="badget">v0.1.0</span>
+            </div>
+            
+            <ul class="nav-links">
+                <li class="active" onclick="switchView('overview')"><i class="fa-solid fa-border-all"></i> Visão Geral</li>
+                <li onclick="switchView('terminal')"><i class="fa-solid fa-terminal"></i> Neural Chat</li>
+                <li onclick="switchView('skills')"><i class="fa-solid fa-bolt"></i> Skills & Configs</li>
+                <li onclick="switchView('doctor')"><i class="fa-solid fa-stethoscope"></i> Doctor</li>
+            </ul>
+
+            <div class="pulse-status">
+                <div class="ring-container">
+                    <div class="ringring"></div>
+                    <div class="circle"></div>
+                </div>
+                <span>Daemon Online</span>
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            
+            <!-- OVERVIEW VIEW -->
+            <section id="view-overview" class="view slide-in active-view">
+                <header class="top-bar">
+                    <h2>Métricas em Tempo Real</h2>
+                    <div class="user-chip"><i class="fa-solid fa-user-astronaut"></i> Operador Logado</div>
+                </header>
+
+                <div class="metrics-grid">
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon cpu-icon"><i class="fa-solid fa-microchip"></i></div>
+                        <div class="stat-info">
+                            <span class="label">Uso de CPU</span>
+                            <strong id="cpu-metric">0%</strong>
+                            <div class="progress-bar"><div class="fill cpu-fill" style="width: 0%;"></div></div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon ram-icon"><i class="fa-solid fa-memory"></i></div>
+                        <div class="stat-info">
+                            <span class="label">Uso de RAM</span>
+                            <strong id="ram-metric">0%</strong>
+                            <div class="progress-bar"><div class="fill ram-fill" style="width: 0%;"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon token-icon"><i class="fa-solid fa-database"></i></div>
+                        <div class="stat-info">
+                            <span class="label">Tokens Queimados</span>
+                            <strong id="token-metric">0</strong>
+                            <small class="sub-label">Sessão Ativa: <span id="active-session-id">---</span></small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass-card full-width mt-2">
+                    <h3>Atividade Recente (Mock)</h3>
+                    <ul class="activity-list">
+                        <li><i class="fa-solid fa-server status-ok"></i> Serviços carregados com sucesso.</li>
+                        <li><i class="fa-solid fa-globe status-info"></i> MCP Registrado: playwright, filesystem.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- NEURAL CHAT VIEW -->
+            <section id="view-terminal" class="view slide-in">
+                <header class="top-bar">
+                    <h2>Interface Neural</h2>
+                </header>
+                <div class="chat-container glass-card">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="msg system-msg">
+                            Conectado ao Pipeline Central. Pronto para processar dados.
+                        </div>
+                    </div>
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chat-input" placeholder="Comande a entidade...">
+                        <button onclick="sendMessage()" class="btn-primary"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SKILLS VIEW -->
+             <section id="view-skills" class="view slide-in">
+                <header class="top-bar">
+                    <h2>Base de Habilidades</h2>
+                </header>
+                <div class="skills-grid" id="skills-container">
+                    <div class="glass-card p-2 text-center loader-box">
+                        <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                        <p>Carregando skills...</p>
+                    </div>
+                </div>
+            </section>
+
+             <!-- DOCTOR VIEW -->
+             <section id="view-doctor" class="view slide-in">
+                <header class="top-bar">
+                    <h2>Sistema de Diagnóstico & Auto-Reparo</h2>
+                </header>
+                <div class="glass-card" id="doctor-container">
+                    <div class="text-center p-2"><i class="fa-solid fa-spinner fa-spin fa-2x"></i> Analisando órgãos do sistema...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

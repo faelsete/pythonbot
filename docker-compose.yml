@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  pythonbot:
+    build: .
+    container_name: pythonbot
+    ports:
+      - "8420:8420"
+    volumes:
+      - pythonbot_data:/root/.pythonbot
+    env_file:
+      - .env.example
+    restart: unless-stopped
+
+volumes:
+  pythonbot_data:
