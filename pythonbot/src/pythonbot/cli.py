@@ -2,7 +2,8 @@ import asyncio
 import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt
+from rich.prompt import Prompt, Confirm
+from rich.table import Table
 
 from pythonbot.core.session import session_manager
 from pythonbot.core.context import ContextAssembler
@@ -77,33 +78,190 @@ def start():
 
 @main.command()
 def setup():
-    """Wizard de configuração inicial."""
-    console.print(Panel("[bold]Setup Wizard[/bold] — Configuração do Pythonbot"))
-
+    """Wizard de configuração inicial com menus interativos."""
     from pythonbot.core.config import CONFIG_DIR
 
-    # Provider
-    provider = Prompt.ask("Provedor LLM", default="openrouter",
-                          choices=["openrouter", "openai", "anthropic", "ollama", "lmstudio"])
-    api_key = Prompt.ask("API Key (será salva em ~/.pythonbot/config/.env)", password=True)
-    model = Prompt.ask("Modelo principal", default="openai/gpt-4o-mini")
+    console.print()
+    console.print(Panel(
+        "[bold cyan]⚡ Pythonbot Setup Wizard[/bold cyan]\n\n"
+        "Vamos configurar seu agente AI em 4 passos rápidos.\n"
+        "As configurações serão salvas em [dim]~/.pythonbot/config/.env[/dim]",
+        border_style="cyan",
+    ))
 
-    # Telegram
-    tg_token = Prompt.ask("Token do Bot Telegram (vazio para pular)", default="")
+    # ── STEP 1: Provider ────────────────────────────────────
+    console.print("\n[bold yellow]PASSO 1/4[/bold yellow] — Provedor LLM\n")
 
-    # Save to .env
+    providers = {
+        "1": ("openrouter", "OpenRouter (multi-model, recomendado)", "https://openrouter.ai/api/v1"),
+        "2": ("openai", "OpenAI (GPT-4o, GPT-4.1)", "https://api.openai.com/v1"),
+        "3": ("anthropic", "Anthropic (Claude Sonnet 4, Haiku)", "https://api.anthropic.com/v1"),
+        "4": ("nvidia", "NVIDIA NIM (Llama, Mistral, DeepSeek)", "https://integrate.api.nvidia.com/v1"),
+        "5": ("ollama", "Ollama (local, sem API key)", "http://localhost:11434/v1"),
+        "6": ("lmstudio", "LM Studio (local, sem API key)", "http://localhost:1234/v1"),
+        "7": ("custom", "✏️  Outro / Manual (digitar URL e modelo)", ""),
+    }
+
+    table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 2))
+    table.add_column("#", style="bold cyan", width=3)
+    table.add_column("Provider", style="bold white")
+    table.add_column("Descrição", style="dim")
+
+    for num, (pid, label, _) in providers.items():
+        table.add_row(num, pid if pid != "custom" else "manual", label)
+
+    console.print(table)
+    console.print()
+
+    choice = Prompt.ask(
+        "Escolha o número do provider",
+        choices=["1", "2", "3", "4", "5", "6", "7"],
+        default="1"
+    )
+    provider_id, provider_label, base_url = providers[choice]
+
+    # Manual: user digita tudo
+    if provider_id == "custom":
+        provider_id = Prompt.ask("  Nome do provider (ex: groq, together, deepinfra)")
+        base_url = Prompt.ask("  Base URL da API (ex: https://api.groq.com/openai/v1)")
+        provider_label = f"{provider_id} (custom)"
+
+    console.print(f"  ✅ [green]{provider_label}[/green]\n")
+
+    # ── STEP 2: API Key ─────────────────────────────────────
+    console.print("[bold yellow]PASSO 2/4[/bold yellow] — API Key\n")
+
+    key_urls = {
+        "openrouter": "https://openrouter.ai/keys",
+        "openai": "https://platform.openai.com/api-keys",
+        "anthropic": "https://console.anthropic.com/settings/keys",
+        "nvidia": "https://build.nvidia.com/explore/discover",
+    }
+
+    if provider_id in ("ollama", "lmstudio"):
+        api_key = "not-needed"
+        console.print("  [dim]Provider local — API key não necessária.[/dim]\n")
+    else:
+        key_url = key_urls.get(provider_id)
+        if key_url:
+            console.print(f"  Obtenha sua key em: [link]{key_url}[/link]")
+        console.print()
+        api_key = Prompt.ask("  Cole sua API Key aqui", password=True)
+
+        if not api_key.strip():
+            console.print("  [red]⚠️ Key vazia! O bot não funcionará sem ela.[/red]")
+            api_key = Prompt.ask("  Tente novamente", password=True)
+
+    # ── STEP 3: Model ────────────────────────────────────────
+    console.print("[bold yellow]PASSO 3/4[/bold yellow] — Modelo Principal\n")
+
+    models_by_provider = {
+        "openrouter": {
+            "1": ("openai/gpt-4o-mini", "GPT-4o Mini (barato, rápido)"),
+            "2": ("openai/gpt-4o", "GPT-4o (poderoso)"),
+            "3": ("anthropic/claude-sonnet-4-20250514", "Claude Sonnet 4 (inteligente)"),
+            "4": ("google/gemini-2.5-flash-preview", "Gemini 2.5 Flash (rápido)"),
+            "5": ("meta-llama/llama-4-maverick", "Llama 4 Maverick (open-source)"),
+            "6": ("nvidia/llama-3.3-nemotron-super-49b-v1", "Nemotron Super 49B (NVIDIA)"),
+        },
+        "openai": {
+            "1": ("gpt-4o-mini", "GPT-4o Mini (barato, rápido)"),
+            "2": ("gpt-4o", "GPT-4o (poderoso)"),
+            "3": ("gpt-4.1-mini", "GPT-4.1 Mini (novo)"),
+        },
+        "anthropic": {
+            "1": ("claude-sonnet-4-20250514", "Claude Sonnet 4"),
+            "2": ("claude-3-5-haiku-20241022", "Claude 3.5 Haiku (rápido)"),
+        },
+        "nvidia": {
+            "1": ("meta/llama-3.3-70b-instruct", "Llama 3.3 70B Instruct"),
+            "2": ("nvidia/llama-3.3-nemotron-super-49b-v1", "Nemotron Super 49B"),
+            "3": ("deepseek-ai/deepseek-r1", "DeepSeek R1"),
+            "4": ("mistralai/mistral-large-2-instruct", "Mistral Large 2"),
+            "5": ("google/gemma-2-27b-it", "Gemma 2 27B"),
+        },
+        "ollama": {
+            "1": ("llama3.2", "Llama 3.2 (8B)"),
+            "2": ("qwen2.5", "Qwen 2.5 (7B)"),
+            "3": ("mistral", "Mistral (7B)"),
+        },
+        "lmstudio": {
+            "1": ("local-model", "Modelo carregado no LM Studio"),
+        },
+    }
+
+    available_models = models_by_provider.get(provider_id, {})
+
+    if available_models:
+        # Adiciona opção manual ao final
+        next_num = str(len(available_models) + 1)
+        available_models[next_num] = ("__manual__", "✏️  Digitar modelo manualmente")
+
+        model_table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 2))
+        model_table.add_column("#", style="bold cyan", width=3)
+        model_table.add_column("Modelo", style="bold white")
+        model_table.add_column("Info", style="dim")
+
+        for num, (model_id, desc) in available_models.items():
+            display_id = model_id if model_id != "__manual__" else "manual"
+            model_table.add_row(num, display_id, desc)
+
+        console.print(model_table)
+        console.print()
+
+        model_choices = list(available_models.keys())
+        model_choice = Prompt.ask(
+            "Escolha o número do modelo",
+            choices=model_choices,
+            default="1"
+        )
+        model = available_models[model_choice][0]
+
+        if model == "__manual__":
+            model = Prompt.ask("  Digite o nome completo do modelo (ex: meta/llama-3.3-70b-instruct)")
+    else:
+        # Provider custom/desconhecido — input direto
+        model = Prompt.ask("  Digite o nome do modelo")
+
+    console.print(f"  ✅ [green]{model}[/green]\n")
+
+    # ── STEP 4: Telegram ─────────────────────────────────────
+    console.print("[bold yellow]PASSO 4/4[/bold yellow] — Telegram Bot (opcional)\n")
+
+    tg_token = ""
+    if Confirm.ask("  Deseja configurar um bot Telegram?", default=False):
+        console.print("  Crie um bot via [link]https://t.me/BotFather[/link] e copie o token.\n")
+        tg_token = Prompt.ask("  Token do bot", password=True)
+
+    # ── SAVE ─────────────────────────────────────────────────
     env_path = CONFIG_DIR / ".env"
     lines = [
-        f"LLM_PROVIDER={provider}",
+        f"LLM_PROVIDER={provider_id}",
         f"LLM_API_KEY={api_key}",
         f"LLM_MODEL={model}",
+        f"LLM_BASE_URL={base_url}",
     ]
     if tg_token:
         lines.append(f"TELEGRAM_BOT_TOKEN={tg_token}")
 
     env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    console.print(f"\n[green]✅ Configuração salva em {env_path}[/green]")
-    console.print("Execute [bold]pythonbot[/bold] para iniciar ou [bold]pythonbot start[/bold] para o daemon.")
+
+    # ── SUMMARY ──────────────────────────────────────────────
+    console.print()
+    summary = Table(title="Configuração Salva", show_header=False, border_style="green", padding=(0, 2))
+    summary.add_column("Key", style="bold")
+    summary.add_column("Value", style="cyan")
+    summary.add_row("Provider", provider_label)
+    summary.add_row("Modelo", model)
+    summary.add_row("API Key", api_key[:8] + "..." if len(api_key) > 8 else "***")
+    summary.add_row("Base URL", base_url)
+    summary.add_row("Telegram", "Configurado" if tg_token else "Não configurado")
+    summary.add_row("Arquivo", str(env_path))
+    console.print(summary)
+
+    console.print(f"\n[bold green]✅ Pronto![/bold green] Execute:")
+    console.print(f"  [cyan]uv run pythonbot[/cyan]          — CLI interativo")
+    console.print(f"  [cyan]uv run pythonbot start[/cyan]    — Daemon + Dashboard\n")
 
 
 if __name__ == "__main__":
