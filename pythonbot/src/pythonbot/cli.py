@@ -146,11 +146,11 @@ def setup():
         if key_url:
             console.print(f"  Obtenha sua key em: [link]{key_url}[/link]")
         console.print()
-        api_key = Prompt.ask("  Cole sua API Key aqui", password=True)
-
-        if not api_key.strip():
-            console.print("  [red]⚠️ Key vazia! O bot não funcionará sem ela.[/red]")
-            api_key = Prompt.ask("  Tente novamente", password=True)
+        api_key = ""
+        while not api_key.strip():
+            api_key = Prompt.ask("  Cole sua API Key aqui", password=True)
+            if not api_key.strip():
+                console.print("  [bold red]❌ API Key é obrigatória para providers cloud. Tente novamente.[/bold red]\n")
 
     # ── STEP 3: Model ────────────────────────────────────────
     console.print("[bold yellow]PASSO 3/4[/bold yellow] — Modelo Principal\n")

@@ -37,16 +37,25 @@ uv sync
 echo "🕸️ Instalando Playwright Chromium..."
 uv run playwright install chromium --with-deps 2>/dev/null || echo "⚠️  Playwright falhou (opcional, browser_screenshot não funcionará)"
 
-# Cria diretórios de config
-mkdir -p "$HOME/.pythonbot/config"
-mkdir -p "$HOME/.pythonbot/data/skills"
+# Cria wrapper para rodar de qualquer lugar
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+cat > "$REPO_DIR/run.sh" << 'RUNEOF'
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/pythonbot" && uv run pythonbot "$@"
+RUNEOF
+chmod +x "$REPO_DIR/run.sh"
 
 echo ""
 echo "✅ Setup Finalizado!"
 echo ""
-echo "Próximo passo — configure o bot:"
-echo "  uv run pythonbot setup"
+echo "Comandos (de qualquer lugar dentro do repo):"
+echo "  ./run.sh setup    # Wizard de configuração"
+echo "  ./run.sh          # CLI interativo"
+echo "  ./run.sh start    # Daemon + Dashboard (porta 8420)"
 echo ""
-echo "Para iniciar:"
-echo "  uv run pythonbot          # CLI interativo"
-echo "  uv run pythonbot start    # Daemon + Dashboard (porta 8420)"
+echo "Iniciando wizard de configuração..."
+echo ""
+
+# Auto-lança o wizard
+cd "$REPO_DIR/pythonbot" && uv run pythonbot setup
