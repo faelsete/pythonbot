@@ -21,14 +21,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-telegram = ["python-telegram-bot>=21.0"]
+telegram = ["aiogram>=3.10.0"]
 mcp = ["mcp[cli]>=1.0.0"]
 voice = ["edge-tts>=6.1.9"]
 stt = ["openai-whisper>=20231117"]
 browser = ["playwright>=1.40.0"]
 memory = ["mempalace>=3.3.1"]
 all = [
-    "python-telegram-bot>=21.0",
+    "aiogram>=3.10.0",
     "mcp[cli]>=1.0.0",
     "edge-tts>=6.1.9",
     "openai-whisper>=20231117",
