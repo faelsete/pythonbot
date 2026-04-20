@@ -48,7 +48,16 @@ class OpenAICompatibleProvider(BaseProvider):
                 json=payload
             )
 
-            resp.raise_for_status()
+            if resp.status_code != 200:
+                try:
+                    err = resp.json()
+                    err_msg = err.get("error", {}).get("message", resp.text[:300])
+                except Exception:
+                    err_msg = resp.text[:300]
+                raise RuntimeError(
+                    f"LLM API erro {resp.status_code}: {err_msg}"
+                )
+
             data = resp.json()
 
             choice = data["choices"][0]

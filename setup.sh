@@ -2,60 +2,56 @@
 set -e
 
 echo "======================================"
-echo "    Pythonbot - Setup Inicial Linux"
+echo "    Pythonbot - Setup Automático"
 echo "======================================"
 
-# Verifica dependencias de sistema (Ubuntu/Debian)
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$REPO_DIR"
+
+# 1. ffmpeg
 if ! command -v ffmpeg &> /dev/null; then
     echo "⚙️  Instalando ffmpeg..."
     sudo apt update && sudo apt install -y ffmpeg
 fi
 
+# 2. uv
 if ! command -v uv &> /dev/null; then
-    echo "⚙️  Instalando uv (Fast Python Package Installer)..."
+    echo "⚙️  Instalando uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    # uv instala em ~/.local/bin — precisa estar no PATH
     export PATH="$HOME/.local/bin:$PATH"
-
-    # Persiste no bashrc se ainda não estiver
     if ! grep -q '.local/bin' "$HOME/.bashrc" 2>/dev/null; then
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
     fi
 fi
 
+# 3. Node (para MCPs)
 if ! command -v npm &> /dev/null; then
-    echo "⚙️  Instalando Node.js (necessário para MCPs)..."
+    echo "⚙️  Instalando Node.js..."
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt-get install -y nodejs
 fi
 
-echo "📦 Instalando dependências do Pythonbot..."
-cd pythonbot
+# 4. Dependências Python
+echo "📦 Instalando dependências..."
 uv sync
 
-echo "🕸️ Instalando Playwright Chromium..."
-uv run playwright install chromium --with-deps 2>/dev/null || echo "⚠️  Playwright falhou (opcional, browser_screenshot não funcionará)"
+# 5. Playwright (opcional)
+echo "🕸️  Instalando Playwright..."
+uv run playwright install chromium --with-deps 2>/dev/null || echo "⚠️  Playwright falhou (opcional)"
 
-# Cria wrapper para rodar de qualquer lugar
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-cat > "$REPO_DIR/run.sh" << 'RUNEOF'
-#!/bin/bash
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/pythonbot" && uv run pythonbot "$@"
-RUNEOF
-chmod +x "$REPO_DIR/run.sh"
+# 6. Diretórios
+mkdir -p "$HOME/.pythonbot/config"
+mkdir -p "$HOME/.pythonbot/data/skills"
 
 echo ""
-echo "✅ Setup Finalizado!"
+echo "✅ Instalação completa!"
 echo ""
-echo "Comandos (de qualquer lugar dentro do repo):"
-echo "  ./run.sh setup    # Wizard de configuração"
-echo "  ./run.sh          # CLI interativo"
-echo "  ./run.sh start    # Daemon + Dashboard (porta 8420)"
+echo "Comandos (do diretório raiz do repo):"
+echo "  uv run pythonbot setup    # Wizard de configuração"
+echo "  uv run pythonbot          # CLI interativo"  
+echo "  uv run pythonbot start    # Daemon + Dashboard"
 echo ""
 echo "Iniciando wizard de configuração..."
 echo ""
 
-# Auto-lança o wizard
-cd "$REPO_DIR/pythonbot" && uv run pythonbot setup
+uv run pythonbot setup

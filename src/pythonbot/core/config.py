@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     vision_model: str = Field(default="")
 
     # Dashboard / API config
-    api_host: str = Field(default="127.0.0.1")
+    api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8420)
     api_password: str = Field(default="pythonbot2026")
 

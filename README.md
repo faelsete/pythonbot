@@ -23,7 +23,7 @@ Diferente de modelos genéricos ou instâncias temporárias, o **Pythonbot** é 
 ## 📦 Arquitetura
 
 ```
-pythonbot/src/pythonbot/
+src/pythonbot/
 ├── core/          # Daemon, Router, Session, Context, Config
 ├── providers/     # LLM providers (OpenAI-compatible)
 ├── tools/         # 12 ferramentas built-in
@@ -58,32 +58,14 @@ bash setup.sh
 .\setup.ps1
 ```
 
-### 3. Configure
+### 3. Configure e use
+
+O `setup.sh` já lança o wizard automaticamente. Depois:
 
 ```bash
-cd pythonbot && uv run pythonbot setup
+uv run pythonbot          # CLI interativo
+uv run pythonbot start    # Daemon + Dashboard (http://IP:8420)
 ```
-
-O wizard vai pedir:
-- Provedor LLM (openrouter, openai, anthropic, ollama, lmstudio)
-- API Key
-- Modelo (default: `openai/gpt-4o-mini`)
-- Token do Telegram Bot (opcional)
-
-Config salva em `~/.pythonbot/config/.env`
-
-### 4. Execute
-
-**Terminal Neural (CLI interativo):**
-```bash
-cd pythonbot && uv run pythonbot
-```
-
-**Daemon + Dashboard Web:**
-```bash
-cd pythonbot && uv run pythonbot start
-```
-Acesse **http://localhost:8420** para o Dashboard.
 
 ### 5. Docker (opcional)
 

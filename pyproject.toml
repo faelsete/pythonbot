@@ -2,7 +2,7 @@
 name = "pythonbot"
 version = "0.1.0"
 description = "Um agente AI local-first que funciona como organismo vivo no sistema operacional."
-readme = "../README.md"
+readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
