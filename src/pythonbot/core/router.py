@@ -23,12 +23,11 @@ def _init_default_provider():
     registry.set_active(settings.llm_provider)
 
 
-# Initialize provider on module load
 _init_default_provider()
 
 
 class MessageRouter:
-    """O Coração Operacional do Pythonbot. Intercepta mensagens, aciona o LLM e resolve tool calls."""
+    """Coração do Pythonbot — roteia mensagens pelo LLM e resolve tool calls."""
 
     def __init__(self):
         self.context_assembler = ContextAssembler()
@@ -40,33 +39,29 @@ class MessageRouter:
 
         provider = registry.get_provider(registry.active_provider)
         if not provider:
-            return "Erro sistêmico crítico. Nenhum provedor LLM configurado ou ativo."
+            return "Erro: Nenhum provedor LLM configurado."
 
         if not provider.api_key and "localhost" not in provider.base_url:
             return (
                 "⚠️ API Key não configurada. "
-                "Defina LLM_API_KEY em ~/.pythonbot/config/.env ou use /config set llm_api_key <key>"
+                "Use: uv run pythonbot setup"
             )
 
-        # Insere a msg do user na sessão
         sess.add_message("user", text)
 
-        # Monta system prompt
-        system_prompt = self.context_assembler.assemble(sess.id, sess.tokens_used, sess.created_at)
+        system_prompt = self.context_assembler.assemble(
+            sess.id, sess.tokens_used, sess.created_at
+        )
 
-        # Comprime mensagens antigas para salvar janela
         context_messages = self.context_assembler.compress(sess.messages)
-
-        # Carrega schemas das ferramentas
         tools = tool_registry.get_all_schemas()
 
-        # Agentic Loop
-        max_loops = 5
+        # Agentic loop (max 5 tool rounds)
         current_messages = [Message(role="system", content=system_prompt)] + context_messages
 
-        for loop_idx in range(max_loops):
+        for loop_idx in range(5):
             try:
-                logger.info(f"Agentic loop iteration {loop_idx}")
+                logger.info(f"LLM call #{loop_idx}")
                 response = await provider.chat(
                     messages=current_messages,
                     model=provider.models[0],
@@ -74,14 +69,12 @@ class MessageRouter:
                 )
                 sess.tokens_used += response.tokens_used
 
-                # O LLM ativou ferramentas?
                 if response.tool_calls:
-                    # Adiciona a mensagem do assistant com as tool_calls no contexto
+                    # Tool execution round
                     assistant_content = response.content or ""
-                    tool_names = [tc["function"]["name"] for tc in response.tool_calls]
-                    if not assistant_content:
-                        assistant_content = f"Executando ferramentas: {', '.join(tool_names)}"
-                    current_messages.append(Message(role="assistant", content=assistant_content))
+                    current_messages.append(
+                        Message(role="assistant", content=assistant_content or "Executando tools...")
+                    )
 
                     for call in response.tool_calls:
                         tool_name = call["function"]["name"]
@@ -92,27 +85,26 @@ class MessageRouter:
 
                         try:
                             tool_result = await tool_registry.execute_tool(tool_name, **args)
-                            tool_msg = f"[Tool '{tool_name}' resultado]:\n{tool_result}"
+                            tool_msg = f"[Tool '{tool_name}']:\n{tool_result}"
                         except Exception as e:
-                            tool_msg = f"[Erro na Tool '{tool_name}']: {str(e)}"
+                            tool_msg = f"[Erro Tool '{tool_name}']: {e}"
 
-                        # Injeta resultado como mensagem do user para compatibilidade universal
                         current_messages.append(Message(role="user", content=tool_msg))
 
-                    continue  # Volta ao loop para o LLM responder baseado nos resultados
+                    continue
 
-                # Resposta final de texto
-                final_text = response.content or "(Resposta vazia do modelo)"
+                # Final text response
+                final_text = response.content or "(Resposta vazia)"
                 sess.add_message("assistant", final_text)
                 return final_text
 
             except Exception as e:
-                error_str = f"Erro no Pipeline Neural: {str(e)}"
+                error_str = f"Erro LLM: {e}"
                 logger.error(error_str, exc_info=True)
                 sess.add_message("assistant", error_str)
                 return error_str
 
-        return "Limite de loops de execução atingido (5 iterações). Tente simplificar o pedido."
+        return "Limite de loops (5) atingido."
 
 
 router_engine = MessageRouter()

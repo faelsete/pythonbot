@@ -54,15 +54,96 @@ def interactive_session():
 
 
 async def _process_message(msg: str):
-    """Process a user message through the LLM pipeline."""
-    from pythonbot.core.router import router_engine
+    """Stream LLM response in real-time."""
+    from pythonbot.core.session import session_manager
+    from pythonbot.core.context import ContextAssembler
+    from pythonbot.core.models import Message
+    from pythonbot.core.config import settings
+    from pythonbot.providers.registry import registry
+    from pythonbot.tools.registry import tool_registry
+    import json
+    import sys
 
-    with console.status("[bold cyan]Pythonbot está pensando...[/bold cyan]", spinner="bouncingBar"):
-        response = await router_engine.process_user_input(
-            session_manager.active_session_id, msg
-        )
+    sess = session_manager.get_session(session_manager.active_session_id)
+    provider = registry.get_provider(registry.active_provider)
 
-    console.print(f"\n[bold purple]Pythonbot:[/bold purple]\n{response}")
+    if not provider:
+        console.print("[red]Erro: Nenhum provider LLM configurado.[/red]")
+        return
+
+    if not provider.api_key and "localhost" not in provider.base_url:
+        console.print("[red]⚠️ API Key não configurada. Use: uv run pythonbot setup[/red]")
+        return
+
+    sess.add_message("user", msg)
+
+    ctx = ContextAssembler()
+    system_prompt = ctx.assemble(sess.id, sess.tokens_used, sess.created_at)
+    context_messages = ctx.compress(sess.messages)
+    tools = tool_registry.get_all_schemas()
+    current_messages = [Message(role="system", content=system_prompt)] + context_messages
+
+    # Agentic loop
+    for loop_idx in range(5):
+        try:
+            # Try streaming first (text-only, no tools on stream)
+            if loop_idx == 0 and not any(kw in msg.lower() for kw in [
+                "execute", "rode", "crie", "arquivo", "pesquise", "busque",
+                "screenshot", "fale", "ouça", "patch", "lista"
+            ]):
+                # Simple conversation — stream it
+                console.print("\n[bold purple]Pythonbot:[/bold purple]")
+                full_response = ""
+                async for chunk in provider.chat_stream(
+                    messages=current_messages,
+                    model=provider.models[0],
+                ):
+                    sys.stdout.write(chunk)
+                    sys.stdout.flush()
+                    full_response += chunk
+                print()  # newline
+                sess.add_message("assistant", full_response or "(Resposta vazia)")
+                return
+
+            # Tool-capable path (non-streaming)
+            response = await provider.chat(
+                messages=current_messages,
+                model=provider.models[0],
+                tools=tools if tools else None,
+            )
+            sess.tokens_used += response.tokens_used
+
+            if response.tool_calls:
+                console.print(f"\n[dim]🔧 Executando tools...[/dim]")
+                current_messages.append(
+                    Message(role="assistant", content=response.content or "Executando tools...")
+                )
+                for call in response.tool_calls:
+                    tool_name = call["function"]["name"]
+                    try:
+                        args = json.loads(call["function"]["arguments"])
+                    except (json.JSONDecodeError, TypeError):
+                        args = {}
+                    try:
+                        result = await tool_registry.execute_tool(tool_name, **args)
+                        console.print(f"[dim]  ✓ {tool_name}[/dim]")
+                        tool_msg = f"[Tool '{tool_name}']:\n{result}"
+                    except Exception as e:
+                        console.print(f"[dim]  ✗ {tool_name}: {e}[/dim]")
+                        tool_msg = f"[Erro Tool '{tool_name}']: {e}"
+                    current_messages.append(Message(role="user", content=tool_msg))
+                continue
+
+            # Final response
+            console.print(f"\n[bold purple]Pythonbot:[/bold purple]\n{response.content}")
+            sess.add_message("assistant", response.content or "(Resposta vazia)")
+            return
+
+        except Exception as e:
+            console.print(f"\n[bold red]Erro: {e}[/bold red]")
+            return
+
+    console.print("[yellow]Limite de loops (5) atingido.[/yellow]")
 
 
 @main.command()
